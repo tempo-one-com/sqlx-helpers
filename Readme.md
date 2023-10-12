@@ -18,5 +18,8 @@ let gtrapool = databases.get_by_code("gtra");
 ```
 
 # Versions
+## 0.2.0 12/10/2023
+Dans init, indication du nb max connexions
+
 ## 0.1.0 13/09/2023
 Struct Database pour gérer une base Postgres (default) et les bases téliways définies dans les variables d'environnement.

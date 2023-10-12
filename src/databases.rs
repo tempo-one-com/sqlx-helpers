@@ -16,27 +16,27 @@ pub struct Databases {
 }
 
 impl Databases {
-    pub async fn init(vars: Vars) -> Result<Self, sqlx::Error> {
+    pub async fn init(vars: Vars, default_max_connections: u32, teliway_max_connections: u32) -> Result<Self, sqlx::Error> {
         let (default_url, teliways_urls) = get_teliways_codes_from_env(vars);
 
-        let default = Databases::init_default(default_url).await?;
-        let teliways = Databases::init_teliways(teliways_urls).await;
+        let default = Databases::init_default(default_url, default_max_connections).await?;
+        let teliways = Databases::init_teliways(teliways_urls, teliway_max_connections).await;
 
         Ok(Databases { default, teliways })
     }
 
-    pub async fn init_default(url: String) -> Result<PgPool, sqlx::Error> {
+    pub async fn init_default(url: String, max_connections: u32) -> Result<PgPool, sqlx::Error> {
         PgPoolOptions::new()
-            .max_connections(3)
+            .max_connections(max_connections)
             .connect(&url)
             .await
             //.map_err(|| Error::DatabaseError(format!("connexion {url} impossible")))
     }
 
-    async fn init_teliways(codes: Vec<(String, String)>) -> HashMap<String, MySqlPool> {
+    async fn init_teliways(codes: Vec<(String, String)>, max_connections: u32) -> HashMap<String, MySqlPool> {
         let futures = codes
             .into_iter()
-            .map(|(code, url)| Databases::init_teliway(code, url))
+            .map(|(code, url)| Databases::init_teliway(code, url, max_connections))
             .collect::<Vec<_>>();
 
         let teliways = futures::future::join_all(futures).await;
@@ -48,9 +48,9 @@ impl Databases {
             .collect::<HashMap<_, _>>()
     }
 
-    async fn init_teliway(code: String, url: String) -> Result<Teliway, sqlx::Error> {
+    async fn init_teliway(code: String, url: String, max_connections: u32) -> Result<Teliway, sqlx::Error> {
         let pool = MySqlPoolOptions::new()
-            .max_connections(3)
+            .max_connections(max_connections)
             .connect(&url)
             .await?;
 
