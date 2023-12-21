@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use sqlx::{MySql, QueryBuilder};
 
 use super::ValueType;
@@ -7,6 +9,18 @@ pub struct MySqlBuilder<'a> {
 }
 
 impl<'a> MySqlBuilder<'a> {
+    pub fn new(init: impl Into<String>) -> Self {
+        MySqlBuilder {
+            builder: QueryBuilder::new(init)
+        }
+    }
+
+    pub fn push(&mut self, sql: impl Display) -> &mut Self {
+        self.builder.push(sql);
+        
+        self
+    }
+
     pub fn and(&mut self, sql: &str, value: ValueType) -> &mut Self {
         match value {
             ValueType::None => {},
@@ -38,9 +52,7 @@ mod tests {
     use super::*;
     #[test]
     fn string() {
-        let mut builder = MySqlBuilder {
-            builder: QueryBuilder::new("")
-        };
+        let mut builder = MySqlBuilder::new("");
         
         builder.and("field", "value".to_string().into());
 
@@ -49,9 +61,7 @@ mod tests {
 
     #[test]
     fn int() {
-        let mut builder = MySqlBuilder {
-            builder: QueryBuilder::new("")
-        };
+        let mut builder = MySqlBuilder::new("");
         
         builder.and("field", 42.into());
 
@@ -60,9 +70,7 @@ mod tests {
 
     #[test]
     fn some() {
-        let mut builder = MySqlBuilder {
-            builder: QueryBuilder::new("")
-        };
+        let mut builder = MySqlBuilder::new("");
         
         builder.and("field", Some("1111".to_string()).into());
 
@@ -71,13 +79,19 @@ mod tests {
 
     #[test]
     fn none() {
-        let mut builder = MySqlBuilder {
-            builder: QueryBuilder::new("")
-        };
+        let mut builder = MySqlBuilder::new("");
         let value:Option<String> = None;
 
         builder.and("field", value.into());
 
         assert_eq!(builder.builder.into_sql(), "")
+    }
+
+    #[test]
+    fn push() {
+        let mut builder = MySqlBuilder::new("");
+        builder.push("SELECT * FROM");
+
+        assert_eq!(builder.builder.into_sql(), "SELECT * FROM")
     }    
 }

@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use sqlx::{QueryBuilder, Postgres};
 
 use super::ValueType;
@@ -7,6 +9,18 @@ pub struct PgBuilder<'a> {
 }
 
 impl<'a> PgBuilder<'a> {
+    pub fn new(init: impl Into<String>) -> Self {
+        PgBuilder {
+            builder: QueryBuilder::new(init)
+        }
+    }
+
+    pub fn push(&mut self, sql: impl Display) -> &mut Self {
+        self.builder.push(sql);
+        
+        self
+    }
+
     pub fn and(&mut self, sql: &str, value: ValueType) -> &mut Self {
         match value {
             ValueType::None => {},
@@ -49,9 +63,7 @@ mod tests {
 
     #[test]
     fn int() {
-        let mut builder = PgBuilder {
-            builder: QueryBuilder::new("")
-        };
+        let mut builder = PgBuilder::new("");
         
         builder.and("field", 42.into());
 
@@ -60,9 +72,7 @@ mod tests {
 
     #[test]
     fn some() {
-        let mut builder = PgBuilder {
-            builder: QueryBuilder::new("")
-        };
+        let mut builder = PgBuilder::new("");
         
         builder.and("field", Some("1111".to_string()).into());
 
@@ -71,13 +81,20 @@ mod tests {
 
     #[test]
     fn none() {
-        let mut builder = PgBuilder {
-            builder: QueryBuilder::new("")
-        };
+        let mut builder = PgBuilder::new("");
+
         let value:Option<String> = None;
 
         builder.and("field", value.into());
 
         assert_eq!(builder.builder.into_sql(), "")
     }    
+
+    #[test]
+    fn push() {
+        let mut builder = PgBuilder::new("");
+        builder.push("SELECT * FROM");
+
+        assert_eq!(builder.builder.into_sql(), "SELECT * FROM")
+    }
 }
