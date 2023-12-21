@@ -4,19 +4,19 @@ use sqlx::{MySql, QueryBuilder};
 
 use super::ValueType;
 
-pub struct MySqlBuilder<'a> {
-    pub builder: QueryBuilder<'a, MySql>
+pub struct Builder<'a> {
+    pub internal: QueryBuilder<'a, MySql>
 }
 
-impl<'a> MySqlBuilder<'a> {
+impl<'a> Builder<'a> {
     pub fn new(init: impl Into<String>) -> Self {
-        MySqlBuilder {
-            builder: QueryBuilder::new(init)
+        Builder {
+            internal: QueryBuilder::new(init)
         }
     }
 
     pub fn push(&mut self, sql: impl Display) -> &mut Self {
-        self.builder.push(sql);
+        self.internal.push(format!(" {sql} "));
         
         self
     }
@@ -25,7 +25,7 @@ impl<'a> MySqlBuilder<'a> {
         match value {
             ValueType::None => {},
             _ => {
-                self.builder.push(format!(" AND {sql} = "));
+                self.internal.push(format!(" AND {sql} = "));
                 self.bind(value);        
             }
         };
@@ -35,13 +35,13 @@ impl<'a> MySqlBuilder<'a> {
 
     fn bind(&mut self, value: ValueType) {
         match value {
-            ValueType::String(x) => self.builder.push_bind(x),
-            ValueType::Int(x) => self.builder.push_bind(x),
-            ValueType::Float(x) => self.builder.push_bind(x),            
-            ValueType::Bool(x) => self.builder.push_bind(x),
-            ValueType::Date(x) => self.builder.push_bind(x),        
-            ValueType::DateTime(x) => self.builder.push_bind(x),                    
-            ValueType::None => &self.builder,
+            ValueType::String(x) => self.internal.push_bind(x),
+            ValueType::Int(x) => self.internal.push_bind(x),
+            ValueType::Float(x) => self.internal.push_bind(x),            
+            ValueType::Bool(x) => self.internal.push_bind(x),
+            ValueType::Date(x) => self.internal.push_bind(x),        
+            ValueType::DateTime(x) => self.internal.push_bind(x),                    
+            ValueType::None => &self.internal,
 
         };
     }
@@ -52,46 +52,46 @@ mod tests {
     use super::*;
     #[test]
     fn string() {
-        let mut builder = MySqlBuilder::new("");
+        let mut builder = Builder::new("");
         
         builder.and("field", "value".to_string().into());
 
-        assert_eq!(builder.builder.into_sql(), " AND field = ?")
+        assert_eq!(builder.internal.into_sql(), " AND field = ?")
     }
 
     #[test]
     fn int() {
-        let mut builder = MySqlBuilder::new("");
+        let mut builder = Builder::new("");
         
         builder.and("field", 42.into());
 
-        assert_eq!(builder.builder.into_sql(), " AND field = ?")
+        assert_eq!(builder.internal.into_sql(), " AND field = ?")
     }
 
     #[test]
     fn some() {
-        let mut builder = MySqlBuilder::new("");
+        let mut builder = Builder::new("");
         
         builder.and("field", Some("1111".to_string()).into());
 
-        assert_eq!(builder.builder.into_sql(), " AND field = ?")
+        assert_eq!(builder.internal.into_sql(), " AND field = ?")
     }    
 
     #[test]
     fn none() {
-        let mut builder = MySqlBuilder::new("");
+        let mut builder = Builder::new("");
         let value:Option<String> = None;
 
         builder.and("field", value.into());
 
-        assert_eq!(builder.builder.into_sql(), "")
+        assert_eq!(builder.internal.into_sql(), "")
     }
 
     #[test]
     fn push() {
-        let mut builder = MySqlBuilder::new("");
+        let mut builder = Builder::new("");
         builder.push("SELECT * FROM");
 
-        assert_eq!(builder.builder.into_sql(), "SELECT * FROM")
+        assert_eq!(builder.internal.into_sql(), " SELECT * FROM ")
     }    
 }
