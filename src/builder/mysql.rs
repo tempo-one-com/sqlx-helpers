@@ -3,7 +3,7 @@ use sqlx::{MySql, QueryBuilder};
 use super::ValueType;
 
 pub struct MySqlBuilder<'a> {
-    builder: QueryBuilder<'a, MySql>
+    pub builder: QueryBuilder<'a, MySql>
 }
 
 impl<'a> MySqlBuilder<'a> {

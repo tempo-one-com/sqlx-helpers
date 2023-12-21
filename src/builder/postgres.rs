@@ -3,7 +3,7 @@ use sqlx::{QueryBuilder, Postgres};
 use super::ValueType;
 
 pub struct PgBuilder<'a> {
-    builder: QueryBuilder<'a, Postgres>
+    pub builder: QueryBuilder<'a, Postgres>
 }
 
 impl<'a> PgBuilder<'a> {
