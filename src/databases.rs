@@ -30,7 +30,6 @@ impl Databases {
             .max_connections(max_connections)
             .connect(&url)
             .await
-            //.map_err(|| Error::DatabaseError(format!("connexion {url} impossible")))
     }
 
     async fn init_teliways(codes: Vec<(String, String)>, max_connections: u32) -> HashMap<String, MySqlPool> {

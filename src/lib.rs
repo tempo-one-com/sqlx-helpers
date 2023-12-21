@@ -1,3 +1,4 @@
+pub mod builder;
 pub mod databases;
 
 pub const DATABASE_URL: &str = "DATABASE_URL";

@@ -18,6 +18,8 @@ let gtrapool = databases.get_by_code("gtra");
 ```
 
 # Versions
+## 0.3.0 21/12/2023
+Ajout Pg/MySqlBuilder
 ## 0.2.0 12/10/2023
 Dans init, indication du nb max connexions
 
