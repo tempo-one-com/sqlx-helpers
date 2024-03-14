@@ -25,7 +25,7 @@ impl<A, B> OneToMany<A, B> {
             let b_opt = many(row.clone());
 
             match b_opt {
-                Ok(b) => my_map.entry(a).or_insert_with(Vec::new).push(b),
+                Ok(b) => my_map.entry(a).or_default().push(b),
                 _ => {
                     let _ = my_map.entry(a).or_default();
                 }
@@ -121,7 +121,7 @@ mod tests {
     }
 
     fn get_by_id(items: &[TeamDto], id: i32) -> Option<TeamDto> {
-        items.into_iter().find(|x| x.id == id).cloned()
+        items.iter().find(|x| x.id == id).cloned()
     }
 
     #[test]
