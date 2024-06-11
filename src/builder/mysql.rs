@@ -1,8 +1,7 @@
 use std::fmt::Display;
-
 use sqlx::{MySql, QueryBuilder};
 
-use super::ValueType;
+use super::{operations::SqlOperation, types::ValueType};
 
 pub struct Builder<'a> {
     pub internal: QueryBuilder<'a, MySql>
@@ -14,19 +13,62 @@ impl<'a> Builder<'a> {
             internal: QueryBuilder::new(init)
         }
     }
+}
 
-    pub fn push(&mut self, sql: impl Display) -> &mut Self {
+impl<'a> SqlOperation for Builder<'a> {
+    fn push(&mut self, sql: impl Display) -> &mut Self {
         self.internal.push(format!(" {sql} "));
         
         self
     }
 
-    pub fn and(&mut self, sql: &str, value: ValueType) -> &mut Self {
+    fn and(&mut self, sql: &str, value: ValueType) -> &mut Self {
         match value {
             ValueType::None => {},
             _ => {
                 self.internal.push(format!(" AND {sql} = "));
                 self.bind(value);        
+            }
+        };
+
+        self
+    }
+
+    fn and_in_str_arr(&mut self, sql: &str, values: &[&str]) -> &mut Self {        
+        if values.is_empty() {
+            return self
+        }
+
+        self.internal.push(format!(" AND {sql} IN ("));
+
+        let mut sep = self.internal.separated(",");
+        for v in values {
+            sep.push_bind(v.to_string());
+        }
+        sep.push_unseparated(") ");
+
+        self      
+    }
+
+    fn and_in_str(&mut self, sql: &str, value: &str) -> &mut Self {        
+        if value.is_empty() {
+            return self
+        }
+
+        let values = 
+            value.split(',')
+            .map(|x| x.trim())
+            .collect::<Vec<_>>();
+
+        self.and_in_str_arr(sql, &values)
+    }
+
+    fn and_starts_like(&mut self, sql: &str, value: ValueType) -> &mut Self {
+        match value {
+            ValueType::None => {}
+            _ => {
+                self.internal.push(format!(" AND {sql} LIKE "));
+                self.bind(value);
             }
         };
 
@@ -93,5 +135,21 @@ mod tests {
         builder.push("SELECT * FROM");
 
         assert_eq!(builder.internal.into_sql(), " SELECT * FROM ")
-    }    
+    }
+
+    #[test]
+    fn and_in_str_arr() {
+        let mut builder = Builder::new("");
+        builder.and_in_str_arr("code", &["a","b"]);
+
+        assert_eq!(builder.internal.into_sql(), " AND code IN (?,?) ")
+    }        
+
+    #[test]
+    fn and_in_str() {
+        let mut builder = Builder::new("");
+        builder.and_in_str("code", "a,b");
+
+        assert_eq!(builder.internal.into_sql(), " AND code IN (?,?) ")
+    }        
 }
