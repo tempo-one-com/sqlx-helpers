@@ -34,7 +34,7 @@ impl<'a> SqlOperation for Builder<'a> {
         self
     }
 
-    fn and_in_str_arr(&mut self, sql: &str, values: &[&str]) -> &mut Self {        
+    fn and_in_str(&mut self, sql: &str, values: &[&str]) -> &mut Self {        
         if values.is_empty() {
             return self
         }
@@ -48,19 +48,6 @@ impl<'a> SqlOperation for Builder<'a> {
         sep.push_unseparated(") ");
 
         self      
-    }
-
-    fn and_in_str(&mut self, sql: &str, value: &str) -> &mut Self {        
-        if value.is_empty() {
-            return self
-        }
-
-        let values = 
-            value.split(',')
-            .map(|x| x.trim())
-            .collect::<Vec<_>>();
-
-        self.and_in_str_arr(sql, &values)
     }
 
     fn and_starts_like(&mut self, sql: &str, value: ValueType) -> &mut Self {
@@ -140,15 +127,7 @@ mod tests {
     #[test]
     fn and_in_str_arr() {
         let mut builder = Builder::new("");
-        builder.and_in_str_arr("code", &["a","b"]);
-
-        assert_eq!(builder.internal.into_sql(), " AND code IN (?,?) ")
-    }        
-
-    #[test]
-    fn and_in_str() {
-        let mut builder = Builder::new("");
-        builder.and_in_str("code", "a,b");
+        builder.and_in_str("code", &["a","b"]);
 
         assert_eq!(builder.internal.into_sql(), " AND code IN (?,?) ")
     }        
