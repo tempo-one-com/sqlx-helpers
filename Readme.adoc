@@ -18,6 +18,9 @@ let gtrapool = databases.get_by_code("gtra");
 ----
 
 == Versions
+0.4.2 11/06/24::
+Ajout and_in
+
 0.4.1 12/04/24::
 Ajout and_starts_like
 
