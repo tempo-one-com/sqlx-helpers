@@ -18,7 +18,7 @@ impl<A, B> OneToMany<A, B> {
         B: TryFrom<T> + Debug + Clone,
         T: Clone,
     {
-        let mut my_map = HashMap::<A, Vec<B>>::with_capacity(100);
+        let mut my_map = HashMap::<A, Vec<B>>::with_capacity(500);
 
         for row in rows {
             let a = one(row.clone());
@@ -125,7 +125,7 @@ mod tests {
     }
 
     #[test]
-    fn test_1() {
+    fn test_combine() {
         let rows = vec![
             TeamUser {
                 team_id: 1,
@@ -171,4 +171,39 @@ mod tests {
         assert_eq!(get_by_id(&receps, 3).unwrap().user_codes(), vec!["C30"]);
         assert_eq!(get_by_id(&receps, 3).unwrap().id, 3);
     }
+
+    #[test]
+    fn test_as_vec() {
+        let rows = vec![
+            TeamUser {
+                team_id: 1,
+                name: Some("A Team".to_owned()),
+                user_id: Some(10),
+                username: Some("A10".to_owned()),
+                ..Default::default()
+            },
+            TeamUser {
+                team_id: 1,
+                name: Some("A Team".to_owned()),
+                user_id: Some(11),
+                username: Some("A11".to_owned()),
+                ..Default::default()
+            },
+            TeamUser {
+                team_id: 2,
+                name: Some("B Team".to_owned()),
+                user_id: None,
+                ..Default::default()
+            },
+        ];
+        let receps = OneToMany::extract(TeamDto::from, UserDto::try_from, rows)
+            .as_vec();
+
+        assert_eq!(receps.len(), 2);
+        if let Some((_, a_users)) = receps.iter().find(|(x,_)| x.id == 1).cloned() {
+            assert_eq!(a_users.len(), 2);
+        } else {
+            panic!("test_as_vec");
+        }
+    }    
 }
