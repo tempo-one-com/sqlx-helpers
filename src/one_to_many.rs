@@ -4,7 +4,7 @@ use sqlx::Error;
 
 #[derive(Clone, Debug)]
 pub struct OneToMany<A, B> {
-    store: HashMap<A, Vec<B>>,
+    store: Vec<(A, Vec<B>)>,
 }
 
 impl<A, B> OneToMany<A, B> {
@@ -18,21 +18,79 @@ impl<A, B> OneToMany<A, B> {
         B: TryFrom<T> + Debug + Clone,
         T: Clone,
     {
-        let mut my_map = HashMap::<A, Vec<B>>::with_capacity(500);
+        let mut items = HashMap::<A, Vec<B>>::with_capacity(500);
 
         for row in rows {
             let a = one(row.clone());
             let b_opt = many(row.clone());
 
             match b_opt {
-                Ok(b) => my_map.entry(a).or_default().push(b),
+                Ok(b) => items.entry(a).or_default().push(b),
                 _ => {
-                    let _ = my_map.entry(a).or_default();
+                    let _ = items.entry(a).or_default();
                 }
             };
         }
 
-        Self { store: my_map }
+        let store = items.into_iter()
+        .map(|x| (x.0, x.1))
+        .collect::<Vec<_>>();
+
+
+        Self { store }
+    }
+
+    pub fn extract_from_ordered<T>(
+        one: impl Fn(T) -> A,
+        many: impl Fn(T) -> Result<B, Error>,
+        rows: Vec<T>,
+    ) -> Self
+    where
+        A: From<T> + Debug + Eq + PartialEq + Hash + Clone,
+        B: TryFrom<T> + Debug + Clone,
+        T: Clone,
+    {
+        let mut items: Vec<(A, Vec<B>)> = vec![];
+        let mut current: Option<(A, Vec<B>)> = rows.first().map(|x| (one(x.clone()), vec![]));
+
+        for row in rows {
+            let a = one(row.clone());
+            let b_opt = many(row.clone());
+
+            match b_opt {
+                Ok(b) => {
+                    match current {
+                        Some((curr, evts)) if curr == a => {
+                            let mut v = evts;
+                            v.push(b);
+                            current = Some((curr, v));
+                        },
+                        Some((curr, evts)) => {
+                            items.push((curr.clone(), evts.clone()));
+                            current = Some((a, vec![b]))
+                        },
+                        None => {
+                            current = Some((a, vec![b]))
+                        }
+                    }
+                },
+                _ => {
+                    match current {
+                        Some((curr, evts)) if curr != a => {
+                            items.push((curr, evts));
+                            current = Some((a, vec![]))
+                        },
+                        Some((_, _)) => {},
+                        None => current = Some((a, vec![]))
+                    }
+                }
+            };
+        }
+
+        if let Some(cur) = current {
+            items.push(cur)
+        }
+        Self { store: items }
     }
 
     pub fn combine(&self, combinator: impl Fn(A, Vec<B>) -> A) -> Vec<A>
@@ -52,11 +110,7 @@ impl<A, B> OneToMany<A, B> {
         A: Clone,
         B: Clone,
     {
-        self.store
-            .clone()
-            .into_iter()
-            .map(|x| (x.0, x.1))
-            .collect::<Vec<_>>()
+        self.store.clone()
     }
 }
 
@@ -134,7 +188,7 @@ mod tests {
                 username: Some("C31".to_owned()),
                 ..Default::default()
             },
-            TeamUser {                
+            TeamUser {
                 team_id: 1,
                 name: Some("A Team".to_owned()),
                 user_id: Some(10),
@@ -164,8 +218,7 @@ mod tests {
         ];
         let receps = OneToMany::extract(TeamDto::from, UserDto::try_from, rows)
             .combine(|r: TeamDto, e: Vec<UserDto>| TeamDto { users: e, ..r });
-        assert_eq!(receps.len(), 3);        
-        assert_eq!(receps.iter().map(|x| x.id).collect::<Vec<_>>(), vec![1,2,3]);
+        assert_eq!(receps.len(), 3);
         assert_eq!(
             get_by_id(&receps, 1).unwrap().user_codes(),
             vec!["A10", "A11"]
@@ -174,7 +227,6 @@ mod tests {
 
         assert!(get_by_id(&receps, 2).unwrap().user_codes().is_empty());
         assert_eq!(get_by_id(&receps, 2).unwrap().id, 2);
-
 
         assert_eq!(get_by_id(&receps, 3).unwrap().id, 3);
     }
@@ -203,15 +255,17 @@ mod tests {
                 ..Default::default()
             },
         ];
-        let receps = OneToMany::extract(TeamDto::from, UserDto::try_from, rows)
-            .as_vec();
+        let receps = OneToMany::extract_from_ordered(TeamDto::from, UserDto::try_from, rows).as_vec();
 
         assert_eq!(receps.len(), 2);
-        assert_eq!(receps.iter().map(|x| x.0.id).collect::<Vec<_>>(), vec![1,2]);
-        if let Some((_, a_users)) = receps.iter().find(|(x,_)| x.id == 1).cloned() {
+        assert_eq!(
+            receps.iter().map(|x| x.0.id).collect::<Vec<_>>(),
+            vec![1, 2]
+        );
+        if let Some((_, a_users)) = receps.iter().find(|(x, _)| x.id == 1).cloned() {
             assert_eq!(a_users.len(), 2);
         } else {
             panic!("test_as_vec");
         }
-    }    
+    }
 }

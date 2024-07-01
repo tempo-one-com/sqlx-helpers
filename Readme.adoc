@@ -18,6 +18,10 @@ let gtrapool = databases.get_by_code("gtra");
 ----
 
 == Versions
+0.4.4 01/07/24::
+extract: 1ToMany depuis une liste non triée
+extract_from_ordered: 1ToMany depuis une liste triée
+
 0.4.3 17/06/24::
 Test sur one_to_many::as_vec
 Augmentation capacité à 500
