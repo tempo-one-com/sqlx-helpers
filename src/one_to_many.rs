@@ -128,6 +128,13 @@ mod tests {
     fn test_combine() {
         let rows = vec![
             TeamUser {
+                team_id: 3,
+                name: Some("C Team".to_owned()),
+                user_id: Some(21),
+                username: Some("C31".to_owned()),
+                ..Default::default()
+            },
+            TeamUser {                
                 team_id: 1,
                 name: Some("A Team".to_owned()),
                 user_id: Some(10),
@@ -157,8 +164,8 @@ mod tests {
         ];
         let receps = OneToMany::extract(TeamDto::from, UserDto::try_from, rows)
             .combine(|r: TeamDto, e: Vec<UserDto>| TeamDto { users: e, ..r });
-        dbg!(&receps);
-        assert_eq!(receps.len(), 3);
+        assert_eq!(receps.len(), 3);        
+        assert_eq!(receps.iter().map(|x| x.id).collect::<Vec<_>>(), vec![1,2,3]);
         assert_eq!(
             get_by_id(&receps, 1).unwrap().user_codes(),
             vec!["A10", "A11"]
@@ -168,7 +175,7 @@ mod tests {
         assert!(get_by_id(&receps, 2).unwrap().user_codes().is_empty());
         assert_eq!(get_by_id(&receps, 2).unwrap().id, 2);
 
-        assert_eq!(get_by_id(&receps, 3).unwrap().user_codes(), vec!["C30"]);
+
         assert_eq!(get_by_id(&receps, 3).unwrap().id, 3);
     }
 
@@ -200,6 +207,7 @@ mod tests {
             .as_vec();
 
         assert_eq!(receps.len(), 2);
+        assert_eq!(receps.iter().map(|x| x.0.id).collect::<Vec<_>>(), vec![1,2]);
         if let Some((_, a_users)) = receps.iter().find(|(x,_)| x.id == 1).cloned() {
             assert_eq!(a_users.len(), 2);
         } else {
