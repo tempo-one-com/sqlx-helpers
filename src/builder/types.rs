@@ -1,10 +1,11 @@
-use sqlx::types::time::{Date, PrimitiveDateTime};
+//use sqlx::types::time::{Date, PrimitiveDateTime};
+use sqlx::types::chrono::{NaiveDate, NaiveDateTime};
 pub enum ValueType {
    String(String),
    Int(i32),
    Float(f32),
-   Date(Date),
-   DateTime(PrimitiveDateTime),
+   Date(NaiveDate),
+   DateTime(NaiveDateTime),
    Bool(bool),
    None,
 }
@@ -54,8 +55,8 @@ impl From<bool> for ValueType {
    }
 }
 
-impl From<Option<Date>> for ValueType {
-   fn from(value: Option<Date>) -> Self {
+impl From<Option<NaiveDate>> for ValueType {
+   fn from(value: Option<NaiveDate>) -> Self {
        match value {
            Some(x) => Self::Date(x),
            _ => Self::None,
@@ -63,14 +64,14 @@ impl From<Option<Date>> for ValueType {
    }
 }
 
-impl From<Date> for ValueType {
-   fn from(value: Date) -> Self {
+impl From<NaiveDate> for ValueType {
+   fn from(value: NaiveDate) -> Self {
        Self::Date(value)
    }
 }
 
-impl From<Option<PrimitiveDateTime>> for ValueType {
-   fn from(value: Option<PrimitiveDateTime>) -> Self {
+impl From<Option<NaiveDateTime>> for ValueType {
+   fn from(value: Option<NaiveDateTime>) -> Self {
        match value {
            Some(x) => Self::DateTime(x),
            _ => Self::None,
@@ -78,8 +79,8 @@ impl From<Option<PrimitiveDateTime>> for ValueType {
    }
 }
 
-impl From<PrimitiveDateTime> for ValueType {
-   fn from(value: PrimitiveDateTime) -> Self {
+impl From<NaiveDateTime> for ValueType {
+   fn from(value: NaiveDateTime) -> Self {
        Self::DateTime(value)
    }
 }
