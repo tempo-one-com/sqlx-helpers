@@ -7,18 +7,30 @@ impl<'a> SqlOperation for QueryBuilder<'a, Postgres> {
         match value {
             ValueType::None => {}
             _ => {
-                self.push(format!("{sql} ="));
+                self.push(format!("{sql}"));
                 self.bind(value);
             }
         };
     }
 
-    fn starts_like(&mut self, sql: &str, value: ValueType) {
+    fn like_starts_with(&mut self, sql: &str, value: ValueType) {
         match value {
             ValueType::None => {}
             _ => {
-                self.push(format!("{sql} ILIKE "));
+                self.push(format!("{sql} ILIKE CONCAT("));
                 self.bind(value);
+                self.push(",'%')");
+            }
+        };
+    }
+
+    fn like_within(&mut self, sql: &str, value: ValueType) {
+        match value {
+            ValueType::None => {}
+            _ => {
+                self.push(format!("{sql} LIKE CONCAT('%',"));
+                self.bind(value);
+                self.push(",'%')");
             }
         };
     }
@@ -84,25 +96,25 @@ mod tests {
     fn string() {
         let mut builder: QueryBuilder<'_, Postgres> = QueryBuilder::new("");
 
-        builder.push_value("AND field", "value".to_string().into());
+        builder.push_value("AND field=", "value".to_string().into());
 
-        assert_eq!(builder.into_sql(), "AND field =$1")
+        assert_eq!(builder.into_sql(), "AND field=$1")
     }
 
     #[test]
     fn int() {
         let mut builder: QueryBuilder<'_, Postgres> = QueryBuilder::new("");
-        builder.push_value("AND field", 42.into());
+        builder.push_value("AND field=", 42.into());
 
-        assert_eq!(builder.into_sql(), "AND field =$1")
+        assert_eq!(builder.into_sql(), "AND field=$1")
     }
 
     #[test]
     fn some() {
         let mut builder: QueryBuilder<'_, Postgres> = QueryBuilder::new("");
-        builder.push_value("AND field", Some("1111".to_string()).into());
+        builder.push_value("AND field=", Some("1111".to_string()).into());
 
-        assert_eq!(builder.into_sql(), "AND field =$1")
+        assert_eq!(builder.into_sql(), "AND field=$1")
     }
 
     #[test]
@@ -127,15 +139,15 @@ mod tests {
     fn starts_like() {
         let mut builder: QueryBuilder<'_, Postgres> = QueryBuilder::new("");
         let name_like = "hank";
-        let name_like = format!("{name_like}%");
+        //let name_like = format!("{name_like}");
 
-        builder.starts_like("AND field", name_like.into());
+        builder.like_starts_with("AND field", name_like.to_string().into());
 
-        assert_eq!(builder.into_sql(), "AND field ILIKE $1")
+        assert_eq!(builder.into_sql(), "AND field ILIKE CONCAT($1,'%')")
     }
 
     #[test]
-    fn and_in_str_arr() {
+    fn in_str_arr() {
         let mut builder: QueryBuilder<'_, Postgres> = QueryBuilder::new("");
         builder.in_str("AND code", &["a", "b"]);
 
