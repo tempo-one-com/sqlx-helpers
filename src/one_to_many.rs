@@ -32,10 +32,7 @@ impl<A, B> OneToMany<A, B> {
             };
         }
 
-        let store = items.into_iter()
-        .map(|x| (x.0, x.1))
-        .collect::<Vec<_>>();
-
+        let store = items.into_iter().map(|x| (x.0, x.1)).collect::<Vec<_>>();
 
         Self { store }
     }
@@ -58,32 +55,26 @@ impl<A, B> OneToMany<A, B> {
             let b_opt = many(row.clone());
 
             match b_opt {
-                Ok(b) => {
-                    match current {
-                        Some((curr, evts)) if curr == a => {
-                            let mut v = evts;
-                            v.push(b);
-                            current = Some((curr, v));
-                        },
-                        Some((curr, evts)) => {
-                            items.push((curr.clone(), evts.clone()));
-                            current = Some((a, vec![b]))
-                        },
-                        None => {
-                            current = Some((a, vec![b]))
-                        }
+                Ok(b) => match current {
+                    Some((curr, evts)) if curr == a => {
+                        let mut v = evts;
+                        v.push(b);
+                        current = Some((curr, v));
                     }
+                    Some((curr, evts)) => {
+                        items.push((curr.clone(), evts.clone()));
+                        current = Some((a, vec![b]))
+                    }
+                    None => current = Some((a, vec![b])),
                 },
-                _ => {
-                    match current {
-                        Some((curr, evts)) if curr != a => {
-                            items.push((curr, evts));
-                            current = Some((a, vec![]))
-                        },
-                        Some((_, _)) => {},
-                        None => current = Some((a, vec![]))
+                _ => match current {
+                    Some((curr, evts)) if curr != a => {
+                        items.push((curr, evts));
+                        current = Some((a, vec![]))
                     }
-                }
+                    Some((_, _)) => {}
+                    None => current = Some((a, vec![])),
+                },
             };
         }
 
@@ -147,7 +138,6 @@ mod tests {
         pub user_id: Option<i32>,
         pub username: Option<String>,
         pub email: Option<String>,
-        pub is_admin: Option<bool>,
     }
 
     impl From<TeamUser> for TeamDto {
@@ -255,7 +245,8 @@ mod tests {
                 ..Default::default()
             },
         ];
-        let receps = OneToMany::extract_from_ordered(TeamDto::from, UserDto::try_from, rows).as_vec();
+        let receps =
+            OneToMany::extract_from_ordered(TeamDto::from, UserDto::try_from, rows).as_vec();
 
         assert_eq!(receps.len(), 2);
         assert_eq!(
