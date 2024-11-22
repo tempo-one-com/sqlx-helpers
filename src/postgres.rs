@@ -35,20 +35,20 @@ impl<'a> SqlOperation for QueryBuilder<'a, Postgres> {
         };
     }
 
-    fn in_str(&mut self, sql: &str, values: &[&str]) {
-        let types = values
-            .into_iter()
-            .map(|x| ValueType::String((*x).to_owned()))
+    fn in_str<S>(&mut self, sql: &str, values: &[S])
+    where
+        S: Into<String> + Clone,
+    {
+        let types: Vec<ValueType> = values
+            .iter()
+            .map(|x| ValueType::String((*x).clone().into()))
             .collect::<Vec<_>>();
 
         self.in_value_types(sql, &types);
     }
 
     fn in_int(&mut self, sql: &str, values: &[i32]) {
-        let types = values
-            .into_iter()
-            .map(|x| ValueType::Int(*x))
-            .collect::<Vec<_>>();
+        let types: Vec<ValueType> = values.into_iter().map(|x| (*x).into()).collect::<Vec<_>>();
 
         self.in_value_types(sql, &types);
     }
@@ -150,6 +150,14 @@ mod tests {
     fn in_str_arr() {
         let mut builder: QueryBuilder<'_, Postgres> = QueryBuilder::new("");
         builder.in_str("AND code", &["a", "b"]);
+
+        assert_eq!(builder.sql(), "AND code IN ($1,$2)")
+    }
+
+    #[test]
+    fn in_str_arr_string() {
+        let mut builder: QueryBuilder<'_, Postgres> = QueryBuilder::new("");
+        builder.in_str("AND code", &["a".to_string(), "b".to_string()]);
 
         assert_eq!(builder.sql(), "AND code IN ($1,$2)")
     }

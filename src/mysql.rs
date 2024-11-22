@@ -13,10 +13,13 @@ impl<'a> SqlOperation for QueryBuilder<'a, MySql> {
         };
     }
 
-    fn in_str(&mut self, sql: &str, values: &[&str]) {
+    fn in_str<S>(&mut self, sql: &str, values: &[S])
+    where
+        S: Into<String> + Clone,
+    {
         let types = values
-            .into_iter()
-            .map(|x| ValueType::String((*x).to_owned()))
+            .iter()
+            .map(|x| ValueType::String((*x).clone().into()))
             .collect::<Vec<_>>();
 
         self.in_value_types(sql, &types);

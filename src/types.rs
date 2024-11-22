@@ -26,6 +26,21 @@ impl From<String> for ValueType {
     }
 }
 
+impl From<Option<&str>> for ValueType {
+    fn from(value: Option<&str>) -> Self {
+        match value {
+            Some(x) => Self::String(x.to_owned()),
+            _ => Self::None,
+        }
+    }
+}
+
+impl From<&str> for ValueType {
+    fn from(value: &str) -> Self {
+        Self::String(value.to_owned())
+    }
+}
+
 impl From<Option<i32>> for ValueType {
     fn from(value: Option<i32>) -> Self {
         match value {
