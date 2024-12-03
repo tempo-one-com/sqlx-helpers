@@ -6,5 +6,6 @@ pub mod one_to_many;
 pub mod operations;
 pub mod postgres;
 pub mod types;
+pub mod utils;
 
 pub const DATABASE_URL: &str = "DATABASE_URL";
