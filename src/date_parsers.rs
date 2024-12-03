@@ -1,14 +1,19 @@
 use sqlx::types::chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 
+///format attendu: yyyy-mm-dd
 pub fn parse_iso_to_date(value: &str) -> Option<NaiveDate> {
     NaiveDate::parse_from_str(value, "%Y-%m-%d").ok()
 }
 
-pub fn parse_opt_iso_to_date(value: Option<&str>) -> Option<NaiveDate> {
-    match value {
-        Some(x) => parse_iso_to_date(x),
-        _ => None,
+///format attendu: HH:mm:ss
+pub fn parse_iso_to_time(value: &str) -> Option<NaiveTime> {
+    let mut time = String::from(value);
+
+    if value.len() == 5 {
+        time.push_str(":00");
     }
+
+    NaiveTime::parse_from_str(&time, "%H:%M:%S").ok()
 }
 
 pub fn parse_teliway_to_date(value: &str) -> Option<NaiveDate> {
