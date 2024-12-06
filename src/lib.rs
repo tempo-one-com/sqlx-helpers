@@ -4,6 +4,7 @@ pub mod date_parsers;
 pub mod mysql;
 pub mod one_to_many;
 pub mod operations;
+pub mod pagination;
 pub mod postgres;
 pub mod types;
 pub mod utils;

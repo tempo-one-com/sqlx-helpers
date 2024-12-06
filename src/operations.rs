@@ -1,3 +1,5 @@
+use crate::pagination::Pagination;
+
 use super::types::ValueType;
 
 pub trait SqlOperation {
@@ -10,4 +12,5 @@ pub trait SqlOperation {
     fn bind(&mut self, value: ValueType);
     fn like_starts_with(&mut self, sql: &str, value: ValueType);
     fn like_within(&mut self, sql: &str, value: ValueType);
+    fn set_pagination(&mut self, sql: &str, pagination: Pagination);
 }

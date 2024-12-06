@@ -1,5 +1,7 @@
 use sqlx::{Postgres, QueryBuilder};
 
+use crate::pagination::Pagination;
+
 use super::{operations::SqlOperation, types::ValueType};
 
 impl<'a> SqlOperation for QueryBuilder<'a, Postgres> {
@@ -86,6 +88,17 @@ impl<'a> SqlOperation for QueryBuilder<'a, Postgres> {
             ValueType::None => self,
         };
     }
+
+    ///sql est du style: " ORDER BY s.sDateCreation DESC LIMIT "
+    fn set_pagination(&mut self, sql: &str, pagination: Pagination) {
+        self.push(sql);
+        self.push_bind(pagination.limit as i32);
+
+        if let Some(index) = pagination.page {
+            self.push(" OFFSET ");
+            self.push_bind(pagination.get_offset_for_page(index));
+        }
+    }
 }
 
 #[cfg(test)]
@@ -160,5 +173,19 @@ mod tests {
         builder.in_str("AND code", &["a".to_string(), "b".to_string()]);
 
         assert_eq!(builder.sql(), "AND code IN ($1,$2)")
+    }
+
+    #[test]
+    fn pagination() {
+        let mut builder: QueryBuilder<'_, Postgres> = QueryBuilder::new("");
+        let pagination = Pagination {
+            page: Some(5),
+            limit: 10,
+            nb_items: 100,
+        };
+
+        builder.set_pagination(" ORDER BY s.position LIMIT ", pagination);
+
+        assert_eq!(builder.sql(), " ORDER BY s.position LIMIT $1 OFFSET $2")
     }
 }
