@@ -1,4 +1,7 @@
-pub const PAGE_SIZE: i32 = 100;
+pub trait PaginatedRequest {
+    fn get_page(&self) -> Option<i32>;
+    fn get_page_size(&self) -> Option<i32>;
+}
 
 #[derive(Clone, Debug, Copy)]
 pub struct Pagination {

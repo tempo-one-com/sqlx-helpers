@@ -18,7 +18,14 @@ let gtrapool = databases.get_by_code("gtra");
 ----
 
 == Versions
+0.14.0 06/12/24::
+ajout PaginatedRequest
+
+0.13.0 06/12/24::
+Ajout set_pagination
+
 0.12.0 06/12/24::
+supprimée pour cause erreur
 Ajout set_pagination
 
 0.10.0 03/12/24::
