@@ -1,18 +1,17 @@
 pub trait PaginatedRequest {
     fn get_page(&self) -> Option<i32>;
     fn get_page_size(&self) -> Option<i32>;
-    fn build_pagination(&self) -> Pagination;
 }
 
-#[derive(Clone, Debug, Copy)]
+#[derive(Clone, Debug, Default, Copy, PartialEq)]
 pub struct Pagination {
-    pub page: Option<i32>,
+    pub page: i32,
     pub nb_items: i32,
     pub limit: i32,
 }
 
 impl Pagination {
-    pub fn new(page: Option<i32>, nb_items: i32, limit: i32) -> Self {
+    pub fn new(page: i32, nb_items: i32, limit: i32) -> Self {
         Self {
             page,
             nb_items,
@@ -34,5 +33,87 @@ impl Pagination {
         } else {
             (self.nb_items + self.limit - 1) / self.limit
         }
+    }
+
+    pub fn from_request(req: &dyn PaginatedRequest, limit: i32) -> Self {
+        Self {
+            page: req.get_page().unwrap_or(1),
+            limit: req.get_page_size().unwrap_or(limit),
+            ..Default::default()
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct Request {
+        page: Option<i32>,
+        page_size: Option<i32>,
+    }
+
+    impl PaginatedRequest for Request {
+        fn get_page(&self) -> Option<i32> {
+            self.page
+        }
+
+        fn get_page_size(&self) -> Option<i32> {
+            self.page_size
+        }
+    }
+
+    #[test]
+    fn get_pagination() {
+        let req = Request {
+            page: Some(2),
+            page_size: Some(10),
+        };
+        let pagination = Pagination::from_request(&req, 42);
+
+        assert_eq!(
+            pagination,
+            Pagination {
+                page: 2,
+                nb_items: 0,
+                limit: 10
+            }
+        )
+    }
+
+    #[test]
+    fn get_pagination_no_page_size() {
+        let req = Request {
+            page: Some(2),
+            page_size: None,
+        };
+        let pagination = Pagination::from_request(&req, 42);
+
+        assert_eq!(
+            pagination,
+            Pagination {
+                page: 2,
+                nb_items: 0,
+                limit: 42
+            }
+        )
+    }
+
+    #[test]
+    fn get_pagination_no_page() {
+        let req = Request {
+            page: None,
+            page_size: Some(100),
+        };
+        let pagination = Pagination::from_request(&req, 42);
+
+        assert_eq!(
+            pagination,
+            Pagination {
+                page: 1,
+                nb_items: 0,
+                limit: 100
+            }
+        )
     }
 }

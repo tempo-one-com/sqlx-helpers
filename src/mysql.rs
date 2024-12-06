@@ -96,11 +96,8 @@ impl<'a> SqlOperation for QueryBuilder<'a, MySql> {
     fn set_pagination(&mut self, sql: &str, pagination: Pagination) {
         self.push(sql);
         self.push_bind(pagination.limit);
-
-        if let Some(index) = pagination.page {
-            self.push(" OFFSET ");
-            self.push_bind(pagination.get_offset_for_page(index));
-        }
+        self.push(" OFFSET ");
+        self.push_bind(pagination.get_offset_for_page(pagination.page));
     }
 }
 
@@ -175,7 +172,7 @@ mod tests {
     fn pagination() {
         let mut builder: QueryBuilder<'_, MySql> = QueryBuilder::new("");
         let pagination = Pagination {
-            page: Some(5),
+            page: 5,
             limit: 10,
             nb_items: 100,
         };
