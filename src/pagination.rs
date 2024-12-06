@@ -1,6 +1,7 @@
 pub trait PaginatedRequest {
     fn get_page(&self) -> Option<i32>;
     fn get_page_size(&self) -> Option<i32>;
+    fn build_pagination(&self) -> Pagination;
 }
 
 #[derive(Clone, Debug, Copy)]
