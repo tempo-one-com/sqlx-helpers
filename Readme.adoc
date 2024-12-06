@@ -18,6 +18,9 @@ let gtrapool = databases.get_by_code("gtra");
 ----
 
 == Versions
+0.12.0 06/12/24::
+Ajout set_pagination
+
 0.10.0 03/12/24::
 Ajout parsers et formatters de date
 
