@@ -19,6 +19,18 @@ impl Pagination {
         }
     }
 
+    pub fn with_page(self, page: i32) -> Self {
+        Self { page, ..self }
+    }
+
+    pub fn with_limit(self, limit: i32) -> Self {
+        Self { limit, ..self }
+    }
+
+    pub fn with_nb_items(self, nb_items: i32) -> Self {
+        Self { nb_items, ..self }
+    }
+
     pub fn get_offset_for_page(&self, page_index: i32) -> i32 {
         if self.limit == i32::MAX {
             0

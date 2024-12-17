@@ -18,6 +18,9 @@ let gtrapool = databases.get_by_code("gtra");
 ----
 
 == Versions
+0.16.0 17/12/24::
+Ajout with_xxx sur Pagination
+
 0.15.0 17/12/24::
 Pagination::new()
 
