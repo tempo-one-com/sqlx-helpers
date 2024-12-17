@@ -11,11 +11,11 @@ pub struct Pagination {
 }
 
 impl Pagination {
-    pub fn new(page: i32, nb_items: i32, limit: i32) -> Self {
+    pub fn new() -> Self {
         Self {
-            page,
-            nb_items,
-            limit,
+            page: 1,
+            nb_items: 0,
+            limit: i32::MAX,
         }
     }
 
