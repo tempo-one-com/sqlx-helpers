@@ -2,17 +2,16 @@ use std::{collections::HashMap, fmt::Debug, hash::Hash};
 
 use sqlx::Error;
 
-#[derive(Clone, Debug)]
-pub struct OneToMany<A, B> {
-    store: Vec<(A, Vec<B>)>,
-}
+pub struct OneToMany;
 
-impl<A, B> OneToMany<A, B> {
-    pub fn extract<T>(
+//impl<A, B, C> OneToManyTrait<A, B, C> for OneToMany {}
+
+impl OneToMany {
+    pub fn extract<T, A, B>(
+        rows: &[T],
         one: impl Fn(T) -> A,
         many: impl Fn(T) -> Result<B, Error>,
-        rows: Vec<T>,
-    ) -> Self
+    ) -> Vec<(A, Vec<B>)>
     where
         A: From<T> + Debug + Eq + PartialEq + Hash + Clone,
         B: TryFrom<T> + Debug + Clone,
@@ -32,16 +31,14 @@ impl<A, B> OneToMany<A, B> {
             };
         }
 
-        let store = items.into_iter().map(|x| (x.0, x.1)).collect::<Vec<_>>();
-
-        Self { store }
+        items.into_iter().map(|x| (x.0, x.1)).collect::<Vec<_>>()
     }
 
-    pub fn extract_from_ordered<T>(
+    pub fn extract_from_ordered<T, A, B>(
+        rows: &[T],
         one: impl Fn(T) -> A,
         many: impl Fn(T) -> Result<B, Error>,
-        rows: Vec<T>,
-    ) -> Self
+    ) -> Vec<(A, Vec<B>)>
     where
         A: From<T> + Debug + Eq + PartialEq + Hash + Clone,
         B: TryFrom<T> + Debug + Clone,
@@ -81,27 +78,39 @@ impl<A, B> OneToMany<A, B> {
         if let Some(cur) = current {
             items.push(cur)
         }
-        Self { store: items }
+
+        items
     }
 
-    pub fn combine(&self, combinator: impl Fn(A, Vec<B>) -> A) -> Vec<A>
+    pub fn combine<A, B>(values: Vec<(A, Vec<B>)>, combinator: impl Fn(A, Vec<B>) -> A) -> Vec<A>
     where
         A: Clone,
         B: Clone,
     {
-        self.store
-            .clone()
+        values
             .into_iter()
             .map(|x| combinator(x.0, x.1))
             .collect::<Vec<_>>()
     }
 
-    pub fn as_vec(&self) -> Vec<(A, Vec<B>)>
+    pub fn merge_one_to_manies<A, B, C>(
+        first: Vec<(A, Vec<B>)>,
+        second: Vec<(A, Vec<C>)>,
+    ) -> Vec<(A, Vec<B>, Vec<C>)>
     where
-        A: Clone,
-        B: Clone,
+        A: Debug + Eq + PartialEq + Hash + Clone,
+        B: Debug + Clone,
+        C: Debug + Clone,
     {
-        self.store.clone()
+        let mut second_map: std::collections::HashMap<A, Vec<C>> = second.into_iter().collect();
+
+        first
+            .into_iter()
+            .map(|(p, b_vec)| {
+                let c_vec = second_map.remove(&p).unwrap_or_else(Vec::new);
+                (p, b_vec, c_vec)
+            })
+            .collect()
     }
 }
 
@@ -206,8 +215,12 @@ mod tests {
                 ..Default::default()
             },
         ];
-        let receps = OneToMany::extract(TeamDto::from, UserDto::try_from, rows)
-            .combine(|r: TeamDto, e: Vec<UserDto>| TeamDto { users: e, ..r });
+        let receps: Vec<(TeamDto, Vec<UserDto>)> =
+            OneToMany::extract(&rows, TeamDto::from, UserDto::try_from);
+        let receps = OneToMany::combine(receps, |r: TeamDto, e: Vec<UserDto>| TeamDto {
+            users: e,
+            ..r
+        });
         assert_eq!(receps.len(), 3);
         assert_eq!(
             get_by_id(&receps, 1).unwrap().user_codes(),
@@ -245,8 +258,7 @@ mod tests {
                 ..Default::default()
             },
         ];
-        let receps =
-            OneToMany::extract_from_ordered(TeamDto::from, UserDto::try_from, rows).as_vec();
+        let receps = OneToMany::extract_from_ordered(&rows, TeamDto::from, UserDto::try_from);
 
         assert_eq!(receps.len(), 2);
         assert_eq!(
