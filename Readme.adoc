@@ -18,6 +18,11 @@ let gtrapool = databases.get_by_code("gtra");
 ----
 
 == Versions
+0.18.0 16/01/25::
+Ajout de LIMIT dans set_pagination
+
+0.17.0 20/12/24::
+refactorisation one_to_many. Ajout
 0.16.0 17/12/24::
 Ajout with_xxx sur Pagination
 

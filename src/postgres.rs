@@ -92,7 +92,7 @@ impl<'a> SqlOperation for QueryBuilder<'a, Postgres> {
     ///sql est du style: " ORDER BY s.sDateCreation DESC LIMIT "
     fn set_pagination(&mut self, sql: &str, pagination: Pagination) {
         self.push(sql);
-        self.push_bind(pagination.limit as i32);
+        self.push_value(" LIMIT ", (pagination.limit as i32).into());
         self.push(" OFFSET ");
         self.push_bind(pagination.get_offset_for_page(pagination.page));
     }
@@ -181,7 +181,7 @@ mod tests {
             nb_items: 100,
         };
 
-        builder.set_pagination(" ORDER BY s.position LIMIT ", pagination);
+        builder.set_pagination(" ORDER BY s.position", pagination);
 
         assert_eq!(builder.sql(), " ORDER BY s.position LIMIT $1 OFFSET $2")
     }
