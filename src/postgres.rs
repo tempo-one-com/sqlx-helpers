@@ -30,7 +30,7 @@ impl<'a> SqlOperation for QueryBuilder<'a, Postgres> {
         match value {
             ValueType::None => {}
             _ => {
-                self.push(format!("{sql} LIKE CONCAT('%',"));
+                self.push(format!("{sql} ILIKE CONCAT('%',"));
                 self.bind(value);
                 self.push(",'%')");
             }
@@ -60,7 +60,7 @@ impl<'a> SqlOperation for QueryBuilder<'a, Postgres> {
             return;
         }
 
-        self.push(format!("{sql} IN ("));
+        self.push(format!("{sql} ("));
 
         let mut sep = self.separated(",");
         for v in values.to_vec() {
@@ -159,15 +159,23 @@ mod tests {
     #[test]
     fn in_str_arr() {
         let mut builder: QueryBuilder<'_, Postgres> = QueryBuilder::new("");
-        builder.in_str("AND code", &["a", "b"]);
+        builder.in_str("AND code IN", &["a", "b"]);
 
         assert_eq!(builder.sql(), "AND code IN ($1,$2)")
     }
 
     #[test]
+    fn not_in_str_arr() {
+        let mut builder: QueryBuilder<'_, Postgres> = QueryBuilder::new("");
+        builder.in_str("AND code NOT IN", &["a", "b"]);
+
+        assert_eq!(builder.sql(), "AND code NOT IN ($1,$2)")
+    }
+
+    #[test]
     fn in_str_arr_string() {
         let mut builder: QueryBuilder<'_, Postgres> = QueryBuilder::new("");
-        builder.in_str("AND code", &["a".to_string(), "b".to_string()]);
+        builder.in_str("AND code IN", &["a".to_string(), "b".to_string()]);
 
         assert_eq!(builder.sql(), "AND code IN ($1,$2)")
     }

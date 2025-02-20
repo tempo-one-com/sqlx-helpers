@@ -41,7 +41,7 @@ impl<'a> SqlOperation for QueryBuilder<'a, MySql> {
             return;
         }
 
-        self.push(format!("{sql} IN ("));
+        self.push(format!("{sql} ("));
 
         let mut sep = self.separated(",");
         for v in values.to_vec() {
@@ -163,9 +163,17 @@ mod tests {
     #[test]
     fn in_str_arr() {
         let mut builder: QueryBuilder<'_, MySql> = QueryBuilder::new("");
-        builder.in_str("AND code", &["a", "b"]);
+        builder.in_str("AND code IN", &["a", "b"]);
 
         assert_eq!(builder.into_sql(), "AND code IN (?,?)")
+    }
+
+    #[test]
+    fn not_in_str_arr() {
+        let mut builder: QueryBuilder<'_, MySql> = QueryBuilder::new("");
+        builder.in_str("AND code NOT IN", &["a", "b"]);
+
+        assert_eq!(builder.into_sql(), "AND code NOT IN (?,?)")
     }
 
     #[test]
