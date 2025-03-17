@@ -6,6 +6,7 @@ pub mod one_to_many;
 pub mod operations;
 pub mod pagination;
 pub mod postgres;
+pub mod sqlite;
 pub mod types;
 pub mod utils;
 

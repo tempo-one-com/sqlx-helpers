@@ -1,7 +1,33 @@
-use sqlx::{mysql::MySqlPoolOptions, postgres::PgPoolOptions, MySqlPool, PgPool};
-use std::{collections::HashMap, env::Vars};
+use sqlx::{
+    mysql::MySqlPoolOptions, postgres::PgPoolOptions, sqlite::SqlitePoolOptions, MySqlPool, Pool,
+    Postgres, Sqlite,
+};
+use std::{collections::HashMap, env::Vars, str::FromStr};
 
 use crate::DATABASE_URL;
+
+pub enum DatabaseType {
+    Postgres,
+    Sqlite,
+}
+
+impl FromStr for DatabaseType {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "postgres" | "postgresql" | "pg" => Ok(DatabaseType::Postgres),
+            "sqlite" | "sqlite3" => Ok(DatabaseType::Sqlite),
+            _ => Err(format!("Unsupported database type: {}", s)),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum DbPool {
+    Pg(Pool<Postgres>),
+    Sqlite(Pool<Sqlite>),
+}
 
 #[derive(Clone, Debug)]
 struct Teliway {
@@ -11,7 +37,7 @@ struct Teliway {
 
 #[derive(Clone, Debug)]
 pub struct Databases {
-    pub default: Option<PgPool>,
+    pub default: Option<DbPool>,
     pub teliways: HashMap<String, MySqlPool>,
 }
 
@@ -24,7 +50,15 @@ impl Databases {
         let (default_url, teliways_urls) = get_teliways_codes_from_env(vars);
 
         let default = match default_url {
-            Some(url) => Some(Databases::init_default(url, default_max_connections).await?),
+            Some(url) => {
+                let db_type = DatabaseType::from_str(&url).map_err(|err_msg| {
+                    sqlx::Error::Configuration(Box::new(std::io::Error::new(
+                        std::io::ErrorKind::InvalidInput,
+                        format!("Type de base inconnu: {}", err_msg),
+                    )))
+                })?;
+                Some(Databases::init_default(db_type, url, default_max_connections).await?)
+            }
             _ => None,
         };
 
@@ -33,11 +67,41 @@ impl Databases {
         Ok(Databases { default, teliways })
     }
 
-    pub async fn init_default(url: String, max_connections: u32) -> Result<PgPool, sqlx::Error> {
-        PgPoolOptions::new()
-            .max_connections(max_connections)
-            .connect(&url)
-            .await
+    // pub async fn init_default(url: String, max_connections: u32) -> Result<PgPool, sqlx::Error> {
+    //     PgPoolOptions::new()
+    //         .max_connections(max_connections)
+    //         .connect(&url)
+    //         .await
+    // }
+
+    // pub async fn init_default(url: String, max_connections: u32) -> Result<AnyPool, sqlx::Error> {
+    //     AnyPoolOptions::new()
+    //         .max_connections(max_connections)
+    //         .connect(&url)
+    //         .await
+    // }
+
+    pub async fn init_default(
+        db_type: DatabaseType,
+        url: String,
+        max_connections: u32,
+    ) -> Result<DbPool, sqlx::Error> {
+        match db_type {
+            DatabaseType::Postgres => {
+                let pool = PgPoolOptions::new()
+                    .max_connections(max_connections)
+                    .connect(&url)
+                    .await?;
+                Ok(DbPool::Pg(pool))
+            }
+            DatabaseType::Sqlite => {
+                let pool = SqlitePoolOptions::new()
+                    .max_connections(max_connections)
+                    .connect(&url)
+                    .await?;
+                Ok(DbPool::Sqlite(pool))
+            }
+        }
     }
 
     async fn init_teliways(
