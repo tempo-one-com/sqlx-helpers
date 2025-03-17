@@ -1,6 +1,6 @@
 use sqlx::{
-    mysql::MySqlPoolOptions, postgres::PgPoolOptions, sqlite::SqlitePoolOptions, MySqlPool, Pool,
-    Postgres, Sqlite,
+    mysql::MySqlPoolOptions, postgres::PgPoolOptions, sqlite::SqlitePoolOptions, MySqlPool, PgPool,
+    Pool, Postgres, Sqlite, SqlitePool,
 };
 use std::{collections::HashMap, env::Vars, str::FromStr};
 
@@ -81,27 +81,28 @@ impl Databases {
     //         .await
     // }
 
-    pub async fn init_default(
-        db_type: DatabaseType,
+    pub async fn init_default_pg_pool(
         url: String,
         max_connections: u32,
-    ) -> Result<DbPool, sqlx::Error> {
-        match db_type {
-            DatabaseType::Postgres => {
-                let pool = PgPoolOptions::new()
-                    .max_connections(max_connections)
-                    .connect(&url)
-                    .await?;
-                Ok(DbPool::Pg(pool))
-            }
-            DatabaseType::Sqlite => {
-                let pool = SqlitePoolOptions::new()
-                    .max_connections(max_connections)
-                    .connect(&url)
-                    .await?;
-                Ok(DbPool::Sqlite(pool))
-            }
-        }
+    ) -> Result<PgPool, sqlx::Error> {
+        let pool = PgPoolOptions::new()
+            .max_connections(max_connections)
+            .connect(&url)
+            .await?;
+
+        Ok(pool)
+    }
+
+    pub async fn init_default_sqlite_pool(
+        url: String,
+        max_connections: u32,
+    ) -> Result<SqlitePool, sqlx::Error> {
+        let pool = SqlitePoolOptions::new()
+            .max_connections(max_connections)
+            .connect(&url)
+            .await?;
+
+        Ok(pool)
     }
 
     async fn init_teliways(
