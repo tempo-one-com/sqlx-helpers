@@ -6,6 +6,7 @@ use std::{collections::HashMap, env::Vars, str::FromStr};
 
 use crate::DATABASE_URL;
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum DatabaseType {
     Postgres,
     Sqlite,
@@ -15,10 +16,14 @@ impl FromStr for DatabaseType {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "postgres" | "postgresql" | "pg" => Ok(DatabaseType::Postgres),
-            "sqlite" | "sqlite3" => Ok(DatabaseType::Sqlite),
-            _ => Err(format!("Unsupported database type: {}", s)),
+        let lower_s = s.to_lowercase();
+
+        if lower_s.starts_with("postgres") {
+            Ok(DatabaseType::Postgres)
+        } else if lower_s.starts_with("sqlite") {
+            Ok(DatabaseType::Sqlite)
+        } else {
+            Err(format!("Unsupported database type: {}", s))
         }
     }
 }
@@ -139,9 +144,9 @@ fn get_database_urls_from_env(vars: Vars) -> (Option<String>, Vec<(String, Strin
 
 #[cfg(test)]
 mod tests {
-    use std::env;
+    use std::{env, str::FromStr};
 
-    use crate::databases::get_database_urls_from_env;
+    use crate::databases::{get_database_urls_from_env, DatabaseType};
 
     #[test]
     fn extract_codes_from_env() {
@@ -151,5 +156,11 @@ mod tests {
 
         assert_eq!(default, Some("onex".to_string()));
         assert_eq!(teliways[0], ("gtra".to_string(), "tw_gtra".to_string()));
+    }
+
+    #[test]
+    fn extract_database_type() {
+        let db_type = DatabaseType::from_str("postgres://one:one/onex").unwrap();
+        assert_eq!(db_type, DatabaseType::Postgres);
     }
 }
