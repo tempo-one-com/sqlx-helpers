@@ -18,6 +18,9 @@ let gtrapool = databases.get_by_code("gtra");
 ----
 
 == Versions
+0.20 31/03/25::
+Ajout Sqlite
+
 0.18.0 16/01/25::
 Ajout de LIMIT dans set_pagination
 
