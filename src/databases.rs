@@ -29,7 +29,7 @@ impl FromStr for DatabaseType {
 }
 
 #[derive(Clone, Debug)]
-struct Teliway {
+pub struct Teliway {
     code: String,
     pool: MySqlPool,
 }
@@ -145,8 +145,11 @@ fn get_database_urls_from_env(vars: Vars) -> (Option<String>, Vec<(String, Strin
 #[cfg(test)]
 mod tests {
     use std::{env, str::FromStr};
+    use tokio;
 
     use crate::databases::{get_database_urls_from_env, DatabaseType};
+
+    use super::Databases;
 
     #[test]
     fn extract_codes_from_env() {
@@ -162,5 +165,33 @@ mod tests {
     fn extract_database_type() {
         let db_type = DatabaseType::from_str("postgres://one:one/onex").unwrap();
         assert_eq!(db_type, DatabaseType::Postgres);
+    }
+
+    #[tokio::test]
+    async fn init_teliway_pool() {
+        let database = Databases::init_teliway(
+            "gtra".to_string(),
+            "mysql://root@localhost/tw_gtra".to_string(),
+            1,
+        )
+        .await;
+
+        assert!(database.is_ok());
+    }
+
+    #[tokio::test]
+    async fn init_teliway_pool_from_env() {
+        env::set_var("DATABASE_GTRA_URL", "mysql://root@localhost/tw_gtra");
+        let teliway_pools = Databases::init_teliway_pools(env::vars(), 1).await;
+        let gtra_pool = teliway_pools.get("gtra");
+
+        assert!(gtra_pool.is_some());
+        if let Some(pool) = gtra_pool {
+            let count: i64 = sqlx::query_scalar("select count(*) from tiers")
+                .fetch_one(pool)
+                .await
+                .unwrap();
+            assert!(count > 0);
+        };
     }
 }

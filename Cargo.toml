@@ -16,3 +16,7 @@ sqlx = { version = "0.8", features = [
     "sqlite",
     "chrono",
 ] }
+#tokio = { version = "1", features = ["full"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full", "test-util"] }
