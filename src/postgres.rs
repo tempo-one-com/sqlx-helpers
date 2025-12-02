@@ -157,6 +157,16 @@ mod tests {
     }
 
     #[test]
+    fn like_within() {
+        let mut builder: QueryBuilder<'_, Postgres> = QueryBuilder::new("");
+        let name_like = "hank";
+
+        builder.like_within("AND field", name_like.to_string().into());
+
+        assert_eq!(builder.into_sql(), "AND field ILIKE CONCAT('%',$1,'%')")
+    }
+
+    #[test]
     fn in_str_arr() {
         let mut builder: QueryBuilder<'_, Postgres> = QueryBuilder::new("");
         builder.in_str("AND code IN", &["a", "b"]);
