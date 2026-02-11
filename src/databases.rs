@@ -153,11 +153,14 @@ mod tests {
 
     #[test]
     fn extract_codes_from_env() {
-        env::set_var("DATABASE_URL", "onex");
+        env::set_var("DATABASE_URL", "postgres://one:one@localhost/access");
         env::set_var("DATABASE_GTRA_URL", "tw_gtra");
         let (default, teliways) = get_database_urls_from_env(env::vars());
 
-        assert_eq!(default, Some("onex".to_string()));
+        assert_eq!(
+            default,
+            Some("postgres://one:one@localhost/access".to_string())
+        );
         assert_eq!(teliways[0], ("gtra".to_string(), "tw_gtra".to_string()));
     }
 
@@ -189,6 +192,21 @@ mod tests {
         if let Some(pool) = gtra_pool {
             let count: i64 = sqlx::query_scalar("select count(*) from tiers")
                 .fetch_one(pool)
+                .await
+                .unwrap();
+            assert!(count > 0);
+        };
+    }
+
+    #[tokio::test]
+    async fn init_postgres_pool_from_env() {
+        env::set_var("DATABASE_URL", "postgres://one:one@localhost/access");
+        let pool = Databases::init_local_pg_pool(env::vars(), 1).await;
+
+        assert!(pool.is_some());
+        if let Some(pool) = pool {
+            let count: i64 = sqlx::query_scalar("select count(*) from client")
+                .fetch_one(&pool)
                 .await
                 .unwrap();
             assert!(count > 0);
