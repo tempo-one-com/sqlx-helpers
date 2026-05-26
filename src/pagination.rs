@@ -24,6 +24,7 @@ impl Pagination {
     }
 
     pub fn with_limit(self, limit: i32) -> Self {
+        assert!(limit > 0, "limit must be greater than 0");
         Self { limit, ..self }
     }
 
@@ -40,7 +41,9 @@ impl Pagination {
     }
 
     pub fn page_count(&self) -> i32 {
-        if self.limit == i32::MAX {
+        if self.limit <= 0 {
+            0
+        } else if self.limit == i32::MAX {
             1
         } else {
             (self.nb_items + self.limit - 1) / self.limit
