@@ -5,7 +5,7 @@ use crate::{operations::SqlOperation, pagination::Pagination, types::ValueType};
 macro_rules! impl_sql_operation {
     ($db:ty, $like:literal) => {
         impl<'a> SqlOperation for QueryBuilder<'a, $db> {
-            fn push_value(&mut self, sql: &str, value: ValueType) {
+            fn push_value(&mut self, sql: &'static str, value: ValueType) {
                 match value {
                     ValueType::None => {}
                     _ => {
@@ -15,7 +15,7 @@ macro_rules! impl_sql_operation {
                 };
             }
 
-            fn like_starts_with(&mut self, sql: &str, value: ValueType) {
+            fn like_starts_with(&mut self, sql: &'static str, value: ValueType) {
                 match value {
                     ValueType::None => {}
                     _ => {
@@ -26,7 +26,7 @@ macro_rules! impl_sql_operation {
                 };
             }
 
-            fn like_within(&mut self, sql: &str, value: ValueType) {
+            fn like_within(&mut self, sql: &'static str, value: ValueType) {
                 match value {
                     ValueType::None => {}
                     _ => {
@@ -37,7 +37,7 @@ macro_rules! impl_sql_operation {
                 };
             }
 
-            fn in_str<S>(&mut self, sql: &str, values: &[S])
+            fn in_str<S>(&mut self, sql: &'static str, values: &[S])
             where
                 S: Into<String> + Clone,
             {
@@ -48,12 +48,12 @@ macro_rules! impl_sql_operation {
                 self.in_value_types(sql, &types);
             }
 
-            fn in_int(&mut self, sql: &str, values: &[i32]) {
+            fn in_int(&mut self, sql: &'static str, values: &[i32]) {
                 let types: Vec<ValueType> = values.iter().map(|x| (*x).into()).collect();
                 self.in_value_types(sql, &types);
             }
 
-            fn in_value_types(&mut self, sql: &str, values: &[ValueType]) {
+            fn in_value_types(&mut self, sql: &'static str, values: &[ValueType]) {
                 if values.is_empty() {
                     return;
                 }
@@ -85,7 +85,7 @@ macro_rules! impl_sql_operation {
                 };
             }
 
-            fn set_pagination(&mut self, sql: &str, pagination: Pagination) {
+            fn set_pagination(&mut self, sql: &'static str, pagination: Pagination) {
                 self.push(sql);
                 self.push_value(" LIMIT ", (pagination.limit as i32).into());
                 self.push(" OFFSET ");
