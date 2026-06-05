@@ -9,6 +9,7 @@ use crate::DATABASE_URL;
 #[derive(Debug, PartialEq, Eq)]
 pub enum DatabaseType {
     Postgres,
+    MySql,
     Sqlite,
 }
 
@@ -16,11 +17,12 @@ impl FromStr for DatabaseType {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let lower_s = s.to_lowercase();
-
-        if lower_s.starts_with("postgres") {
+        let lower = s.to_lowercase();
+        if lower.starts_with("postgres") {
             Ok(DatabaseType::Postgres)
-        } else if lower_s.starts_with("sqlite") {
+        } else if lower.starts_with("mysql") {
+            Ok(DatabaseType::MySql)
+        } else if lower.starts_with("sqlite") {
             Ok(DatabaseType::Sqlite)
         } else {
             Err(format!("Unsupported database type: {}", s))
@@ -29,89 +31,76 @@ impl FromStr for DatabaseType {
 }
 
 #[derive(Clone, Debug)]
-pub struct Teliway {
-    code: String,
-    pool: MySqlPool,
-}
-
-#[derive(Clone, Debug)]
 pub struct Databases {
     pub teliways: HashMap<String, MySqlPool>,
 }
 
 impl Databases {
-    pub async fn init_local_pg_pool(env_vars: Vars, max_connections: u32) -> Option<PgPool> {
-        if let (Some(local_db_url), _) = get_database_urls_from_env(env_vars) {
-            if let Ok(DatabaseType::Postgres) = DatabaseType::from_str(&local_db_url) {
-                PgPoolOptions::new()
-                    .max_connections(max_connections)
-                    .connect(&local_db_url)
-                    .await
-                    .ok()
-            } else {
-                None
-            }
-        } else {
-            None
-        }
+    pub async fn init_local_pg_pool_from_vars(env_vars: Vars, max_connections: u32) -> Option<PgPool> {
+        let (url, _) = get_database_urls_from_env(env_vars);
+        connect_pg(&url?, max_connections).await
     }
 
-    pub async fn init_local_sqlite_pool(
+    pub async fn init_local_pg_pool_from_url(url: &str, max_connections: u32) -> Option<PgPool> {
+        connect_pg(url, max_connections).await
+    }
+
+    pub async fn init_local_sqlite_pool_from_vars(
         env_vars: Vars,
         max_connections: u32,
     ) -> Option<SqlitePool> {
-        if let (Some(local_db_url), _) = get_database_urls_from_env(env_vars) {
-            if let Ok(DatabaseType::Sqlite) = DatabaseType::from_str(&local_db_url) {
-                SqlitePoolOptions::new()
-                    .max_connections(max_connections)
-                    .connect(&local_db_url)
-                    .await
-                    .ok()
-            } else {
-                None
-            }
-        } else {
-            None
-        }
+        let (url, _) = get_database_urls_from_env(env_vars);
+        connect_sqlite(&url?, max_connections).await
     }
 
-    pub async fn init_teliway_pools(
+    pub async fn init_mysql_pools_from_vars(
         env_vars: Vars,
         max_connections: u32,
     ) -> HashMap<String, MySqlPool> {
         let (_, values) = get_database_urls_from_env(env_vars);
 
-        let futures = values
-            .into_iter()
-            .map(|(code, url)| Databases::init_teliway(code, url, max_connections))
-            .collect::<Vec<_>>();
-
-        let teliways = futures::future::join_all(futures).await;
-
-        teliways
-            .into_iter()
-            .filter_map(Result::ok)
-            .map(|t| (t.code, t.pool))
-            .collect::<HashMap<_, _>>()
+        futures::future::join_all(values.into_iter().map(|(code, url)| async move {
+            connect_mysql(&url, max_connections).await.map(|pool| (code, pool))
+        }))
+        .await
+        .into_iter()
+        .flatten()
+        .collect()
     }
 
-    async fn init_teliway(
-        code: String,
-        url: String,
-        max_connections: u32,
-    ) -> Result<Teliway, sqlx::Error> {
-        let pool = MySqlPoolOptions::new()
-            .max_connections(max_connections)
-            .connect(&url)
-            .await?;
-
-        Ok(Teliway { code, pool })
+    pub async fn init_mysql_pool_from_url(url: &str, max_connections: u32) -> Option<MySqlPool> {
+        connect_mysql(url, max_connections).await
     }
 
     pub fn get_by_code(&self, code: &str) -> Option<MySqlPool> {
         self.teliways.get(code).cloned()
     }
 }
+
+async fn connect_pg(url: &str, max_connections: u32) -> Option<PgPool> {
+    if DatabaseType::from_str(url) == Ok(DatabaseType::Postgres) {
+        PgPoolOptions::new().max_connections(max_connections).connect(url).await.ok()
+    } else {
+        None
+    }
+}
+
+async fn connect_mysql(url: &str, max_connections: u32) -> Option<MySqlPool> {
+    if DatabaseType::from_str(url) == Ok(DatabaseType::MySql) {
+        MySqlPoolOptions::new().max_connections(max_connections).connect(url).await.ok()
+    } else {
+        None
+    }
+}
+
+async fn connect_sqlite(url: &str, max_connections: u32) -> Option<SqlitePool> {
+    if DatabaseType::from_str(url) == Ok(DatabaseType::Sqlite) {
+        SqlitePoolOptions::new().max_connections(max_connections).connect(url).await.ok()
+    } else {
+        None
+    }
+}
+
 /// Récupération des urls des bases
 /// # Arguments
 /// * `vars` - issu de dotenvy
@@ -134,7 +123,7 @@ fn get_database_urls_from_env(vars: Vars) -> (Option<String>, Vec<(String, Strin
                 .strip_prefix(PREFIX)
                 .and_then(|x| x.strip_suffix(SUFFIX))
             {
-                teliways.push((code.to_lowercase().to_string(), value));
+                teliways.push((code.to_lowercase(), value));
             }
         }
     }
@@ -171,21 +160,16 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn init_teliway_pool() {
-        let database = Databases::init_teliway(
-            "gtra".to_string(),
-            "mysql://root@localhost/tw_gtra".to_string(),
-            1,
-        )
-        .await;
-
-        assert!(database.is_ok());
+    async fn init_mysql_pool() {
+        let pool =
+            Databases::init_mysql_pool_from_url("mysql://root@localhost/tw_gtra", 1).await;
+        assert!(pool.is_some());
     }
 
     #[tokio::test]
     async fn init_teliway_pool_from_env() {
         env::set_var("DATABASE_GTRA_URL", "mysql://root@localhost/tw_gtra");
-        let teliway_pools = Databases::init_teliway_pools(env::vars(), 1).await;
+        let teliway_pools = Databases::init_mysql_pools_from_vars(env::vars(), 1).await;
         let gtra_pool = teliway_pools.get("gtra");
 
         assert!(gtra_pool.is_some());
@@ -201,7 +185,7 @@ mod tests {
     #[tokio::test]
     async fn init_postgres_pool_from_env() {
         env::set_var("DATABASE_URL", "postgres://one:one@localhost/access");
-        let pool = Databases::init_local_pg_pool(env::vars(), 1).await;
+        let pool = Databases::init_local_pg_pool_from_vars(env::vars(), 1).await;
 
         assert!(pool.is_some());
         if let Some(pool) = pool {
