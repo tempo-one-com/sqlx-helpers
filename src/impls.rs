@@ -1,10 +1,12 @@
-use sqlx::{MySql, Postgres, QueryBuilder, Sqlite};
+use sqlx::{MySql, Postgres, QueryBuilder};
+#[cfg(feature = "sqlite")]
+use sqlx::Sqlite;
 
 use crate::{operations::SqlOperation, pagination::Pagination, types::ValueType};
 
 macro_rules! impl_sql_operation {
     ($db:ty, $like:literal) => {
-        impl<'a> SqlOperation for QueryBuilder<'a, $db> {
+        impl SqlOperation for QueryBuilder<$db> {
             fn push_value(&mut self, sql: &'static str, value: ValueType) {
                 match value {
                     ValueType::None => {}
@@ -97,6 +99,7 @@ macro_rules! impl_sql_operation {
 
 impl_sql_operation!(Postgres, "ILIKE");
 impl_sql_operation!(MySql, "LIKE");
+#[cfg(feature = "sqlite")]
 impl_sql_operation!(Sqlite, "LIKE");
 
 #[cfg(test)]
@@ -107,28 +110,28 @@ mod postgres_tests {
 
     #[test]
     fn string() {
-        let mut builder: QueryBuilder<'_, Postgres> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<Postgres> = QueryBuilder::new("");
         builder.push_value("AND field=", "value".to_string().into());
         assert_eq!(builder.into_sql(), "AND field=$1")
     }
 
     #[test]
     fn int() {
-        let mut builder: QueryBuilder<'_, Postgres> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<Postgres> = QueryBuilder::new("");
         builder.push_value("AND field=", 42.into());
         assert_eq!(builder.into_sql(), "AND field=$1")
     }
 
     #[test]
     fn some() {
-        let mut builder: QueryBuilder<'_, Postgres> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<Postgres> = QueryBuilder::new("");
         builder.push_value("AND field=", Some("1111".to_string()).into());
         assert_eq!(builder.into_sql(), "AND field=$1")
     }
 
     #[test]
     fn none() {
-        let mut builder: QueryBuilder<'_, Postgres> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<Postgres> = QueryBuilder::new("");
         let value: Option<String> = None;
         builder.push_value("AND field", value.into());
         assert_eq!(builder.into_sql(), "")
@@ -136,49 +139,49 @@ mod postgres_tests {
 
     #[test]
     fn push() {
-        let mut builder: QueryBuilder<'_, Postgres> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<Postgres> = QueryBuilder::new("");
         builder.push("SELECT * FROM");
         assert_eq!(builder.into_sql(), "SELECT * FROM")
     }
 
     #[test]
     fn starts_like() {
-        let mut builder: QueryBuilder<'_, Postgres> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<Postgres> = QueryBuilder::new("");
         builder.like_starts_with("AND field", "hank".to_string().into());
         assert_eq!(builder.into_sql(), "AND field ILIKE CONCAT($1,'%')")
     }
 
     #[test]
     fn like_within() {
-        let mut builder: QueryBuilder<'_, Postgres> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<Postgres> = QueryBuilder::new("");
         builder.like_within("AND field", "hank".to_string().into());
         assert_eq!(builder.into_sql(), "AND field ILIKE CONCAT('%',$1,'%')")
     }
 
     #[test]
     fn in_str_arr() {
-        let mut builder: QueryBuilder<'_, Postgres> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<Postgres> = QueryBuilder::new("");
         builder.in_str("AND code IN", &["a", "b"]);
         assert_eq!(builder.sql(), "AND code IN ($1,$2)")
     }
 
     #[test]
     fn not_in_str_arr() {
-        let mut builder: QueryBuilder<'_, Postgres> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<Postgres> = QueryBuilder::new("");
         builder.in_str("AND code NOT IN", &["a", "b"]);
         assert_eq!(builder.sql(), "AND code NOT IN ($1,$2)")
     }
 
     #[test]
     fn in_str_arr_string() {
-        let mut builder: QueryBuilder<'_, Postgres> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<Postgres> = QueryBuilder::new("");
         builder.in_str("AND code IN", &["a".to_string(), "b".to_string()]);
         assert_eq!(builder.sql(), "AND code IN ($1,$2)")
     }
 
     #[test]
     fn pagination() {
-        let mut builder: QueryBuilder<'_, Postgres> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<Postgres> = QueryBuilder::new("");
         let pagination = Pagination { page: 5, limit: 10, nb_items: 100 };
         builder.set_pagination(" ORDER BY s.position", pagination);
         assert_eq!(builder.sql(), " ORDER BY s.position LIMIT $1 OFFSET $2")
@@ -193,28 +196,28 @@ mod mysql_tests {
 
     #[test]
     fn string() {
-        let mut builder: QueryBuilder<'_, MySql> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<MySql> = QueryBuilder::new("");
         builder.push_value("AND field=", "value".to_string().into());
         assert_eq!(builder.into_sql(), "AND field=?")
     }
 
     #[test]
     fn int() {
-        let mut builder: QueryBuilder<'_, MySql> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<MySql> = QueryBuilder::new("");
         builder.push_value("AND field=", 42.into());
         assert_eq!(builder.into_sql(), "AND field=?")
     }
 
     #[test]
     fn some() {
-        let mut builder: QueryBuilder<'_, MySql> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<MySql> = QueryBuilder::new("");
         builder.push_value("AND field=", Some("1111".to_string()).into());
         assert_eq!(builder.into_sql(), "AND field=?")
     }
 
     #[test]
     fn none() {
-        let mut builder: QueryBuilder<'_, MySql> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<MySql> = QueryBuilder::new("");
         let value: Option<String> = None;
         builder.push_value("field", value.into());
         assert_eq!(builder.into_sql(), "")
@@ -222,49 +225,49 @@ mod mysql_tests {
 
     #[test]
     fn push() {
-        let mut builder: QueryBuilder<'_, MySql> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<MySql> = QueryBuilder::new("");
         builder.push("SELECT * FROM");
         assert_eq!(builder.into_sql(), "SELECT * FROM")
     }
 
     #[test]
     fn starts_like() {
-        let mut builder: QueryBuilder<'_, MySql> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<MySql> = QueryBuilder::new("");
         builder.like_starts_with("AND field", "hank".to_string().into());
         assert_eq!(builder.into_sql(), "AND field LIKE CONCAT(?,'%')")
     }
 
     #[test]
     fn like_within() {
-        let mut builder: QueryBuilder<'_, MySql> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<MySql> = QueryBuilder::new("");
         builder.like_within("AND field", "hank".to_string().into());
         assert_eq!(builder.into_sql(), "AND field LIKE CONCAT('%',?,'%')")
     }
 
     #[test]
     fn in_str_arr() {
-        let mut builder: QueryBuilder<'_, MySql> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<MySql> = QueryBuilder::new("");
         builder.in_str("AND code IN", &["a", "b"]);
         assert_eq!(builder.into_sql(), "AND code IN (?,?)")
     }
 
     #[test]
     fn not_in_str_arr() {
-        let mut builder: QueryBuilder<'_, MySql> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<MySql> = QueryBuilder::new("");
         builder.in_str("AND code NOT IN", &["a", "b"]);
         assert_eq!(builder.into_sql(), "AND code NOT IN (?,?)")
     }
 
     #[test]
     fn pagination() {
-        let mut builder: QueryBuilder<'_, MySql> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<MySql> = QueryBuilder::new("");
         let pagination = Pagination { page: 5, limit: 10, nb_items: 100 };
         builder.set_pagination(" ORDER BY s.position", pagination);
         assert_eq!(builder.sql(), " ORDER BY s.position LIMIT ? OFFSET ?")
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "sqlite"))]
 mod sqlite_tests {
     use sqlx::{QueryBuilder, Sqlite};
 
@@ -272,28 +275,28 @@ mod sqlite_tests {
 
     #[test]
     fn string() {
-        let mut builder: QueryBuilder<'_, Sqlite> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<Sqlite> = QueryBuilder::new("");
         builder.push_value("AND field=", "value".to_string().into());
         assert_eq!(builder.into_sql(), "AND field=?")
     }
 
     #[test]
     fn int() {
-        let mut builder: QueryBuilder<'_, Sqlite> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<Sqlite> = QueryBuilder::new("");
         builder.push_value("AND field=", 42.into());
         assert_eq!(builder.into_sql(), "AND field=?")
     }
 
     #[test]
     fn some() {
-        let mut builder: QueryBuilder<'_, Sqlite> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<Sqlite> = QueryBuilder::new("");
         builder.push_value("AND field=", Some("1111".to_string()).into());
         assert_eq!(builder.into_sql(), "AND field=?")
     }
 
     #[test]
     fn none() {
-        let mut builder: QueryBuilder<'_, Sqlite> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<Sqlite> = QueryBuilder::new("");
         let value: Option<String> = None;
         builder.push_value("field", value.into());
         assert_eq!(builder.into_sql(), "")
@@ -301,42 +304,42 @@ mod sqlite_tests {
 
     #[test]
     fn push() {
-        let mut builder: QueryBuilder<'_, Sqlite> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<Sqlite> = QueryBuilder::new("");
         builder.push("SELECT * FROM");
         assert_eq!(builder.into_sql(), "SELECT * FROM")
     }
 
     #[test]
     fn starts_like() {
-        let mut builder: QueryBuilder<'_, Sqlite> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<Sqlite> = QueryBuilder::new("");
         builder.like_starts_with("AND field", "hank".to_string().into());
         assert_eq!(builder.into_sql(), "AND field LIKE CONCAT(?,'%')")
     }
 
     #[test]
     fn like_within() {
-        let mut builder: QueryBuilder<'_, Sqlite> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<Sqlite> = QueryBuilder::new("");
         builder.like_within("AND field", "hank".to_string().into());
         assert_eq!(builder.into_sql(), "AND field LIKE CONCAT('%',?,'%')")
     }
 
     #[test]
     fn in_str_arr() {
-        let mut builder: QueryBuilder<'_, Sqlite> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<Sqlite> = QueryBuilder::new("");
         builder.in_str("AND code IN", &["a", "b"]);
         assert_eq!(builder.into_sql(), "AND code IN (?,?)")
     }
 
     #[test]
     fn not_in_str_arr() {
-        let mut builder: QueryBuilder<'_, Sqlite> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<Sqlite> = QueryBuilder::new("");
         builder.in_str("AND code NOT IN", &["a", "b"]);
         assert_eq!(builder.into_sql(), "AND code NOT IN (?,?)")
     }
 
     #[test]
     fn pagination() {
-        let mut builder: QueryBuilder<'_, Sqlite> = QueryBuilder::new("");
+        let mut builder: QueryBuilder<Sqlite> = QueryBuilder::new("");
         let pagination = Pagination { page: 5, limit: 10, nb_items: 100 };
         builder.set_pagination(" ORDER BY s.position", pagination);
         assert_eq!(builder.sql(), " ORDER BY s.position LIMIT ? OFFSET ?")

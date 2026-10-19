@@ -1,7 +1,6 @@
-use sqlx::{
-    mysql::MySqlPoolOptions, postgres::PgPoolOptions, sqlite::SqlitePoolOptions, MySqlPool, PgPool,
-    SqlitePool,
-};
+use sqlx::{mysql::MySqlPoolOptions, postgres::PgPoolOptions, MySqlPool, PgPool};
+#[cfg(feature = "sqlite")]
+use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 use std::{collections::HashMap, env::Vars, str::FromStr};
 
 use crate::DATABASE_URL;
@@ -45,6 +44,7 @@ impl Databases {
         connect_pg(url, max_connections).await
     }
 
+    #[cfg(feature = "sqlite")]
     pub async fn init_local_sqlite_pool_from_vars(
         env_vars: Vars,
         max_connections: u32,
@@ -93,6 +93,7 @@ async fn connect_mysql(url: &str, max_connections: u32) -> Option<MySqlPool> {
     }
 }
 
+#[cfg(feature = "sqlite")]
 async fn connect_sqlite(url: &str, max_connections: u32) -> Option<SqlitePool> {
     if DatabaseType::from_str(url) == Ok(DatabaseType::Sqlite) {
         SqlitePoolOptions::new().max_connections(max_connections).connect(url).await.ok()
@@ -159,16 +160,20 @@ mod tests {
         assert_eq!(db_type, DatabaseType::Postgres);
     }
 
+    /// MySQL local de test, surchargeable par `TEST_MYSQL_URL`.
+    fn test_mysql_url() -> String {
+        env::var("TEST_MYSQL_URL").unwrap_or("mysql://root:root@localhost/tw_gtra".to_string())
+    }
+
     #[tokio::test]
     async fn init_mysql_pool() {
-        let pool =
-            Databases::init_mysql_pool_from_url("mysql://root@localhost/tw_gtra", 1).await;
+        let pool = Databases::init_mysql_pool_from_url(&test_mysql_url(), 1).await;
         assert!(pool.is_some());
     }
 
     #[tokio::test]
     async fn init_teliway_pool_from_env() {
-        env::set_var("DATABASE_GTRA_URL", "mysql://root@localhost/tw_gtra");
+        env::set_var("DATABASE_GTRA_URL", test_mysql_url());
         let teliway_pools = Databases::init_mysql_pools_from_vars(env::vars(), 1).await;
         let gtra_pool = teliway_pools.get("gtra");
 

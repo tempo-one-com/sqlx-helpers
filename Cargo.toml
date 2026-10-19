@@ -1,19 +1,21 @@
 [package]
 name = "sqlx-helpers"
-version = "0.21.0"
+version = "0.25.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+# Support SQLite (pool et opérations), à activer explicitement : compile la librairie C SQLite.
+sqlite = ["sqlx/sqlite"]
+
 [dependencies]
 futures = "0.3"
-sqlx = { version = "0.8", features = [
+sqlx = { version = "0.9", default-features = false, features = [
     "runtime-tokio",
     "tls-rustls",
-    "macros",
     "mysql",
     "postgres",
-    "sqlite",
     "chrono",
 ] }
 #tokio = { version = "1", features = ["full"] }

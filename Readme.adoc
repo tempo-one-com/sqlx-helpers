@@ -9,6 +9,13 @@ Pour Teliway, les codes doivent être les suivants:
 - DATABASE_GTRI_URL
 - DATABASE_EXPRESS_URL
 
+Le support SQLite est optionnel : il faut l'activer explicitement avec la feature `sqlite`.
+
+[,toml]
+----
+sqlx-helpers = { git = "https://github.com/tempo-one-com/sqlx-helpers", tag = "0.25.0", features = ["sqlite"] }
+----
+
 == Usage
 [,rust]
 ----
@@ -18,6 +25,9 @@ let gtrapool = databases.get_by_code("gtra");
 ----
 
 == Versions
+0.25.0 19/10/26::
+Passage à sqlx 0.9 (sans la feature macros). SQLite devient optionnel : feature `sqlite` à activer explicitement.
+
 0.20 31/03/25::
 Ajout Sqlite
 
