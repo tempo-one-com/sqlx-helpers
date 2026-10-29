@@ -13,7 +13,7 @@ Le support SQLite est optionnel : il faut l'activer explicitement avec la featur
 
 [,toml]
 ----
-sqlx-helpers = { git = "https://github.com/tempo-one-com/sqlx-helpers", tag = "0.25.0", features = ["sqlite"] }
+sqlx-helpers = { git = "https://github.com/tempo-one-com/sqlx-helpers", tag = "0.26.0", features = ["sqlite"] }
 ----
 
 == Usage
@@ -25,6 +25,9 @@ let gtrapool = databases.get_by_code("gtra");
 ----
 
 == Versions
+0.26.0 29/10/26::
+Pools MySQL paresseux (`connect_lazy`) : une base injoignable au démarrage n'est plus ignorée, la connexion est tentée à chaque requête.
+
 0.25.0 19/10/26::
 Passage à sqlx 0.9 (sans la feature macros). SQLite devient optionnel : feature `sqlite` à activer explicitement.
 

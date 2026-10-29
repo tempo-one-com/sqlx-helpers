@@ -59,17 +59,14 @@ impl Databases {
     ) -> HashMap<String, MySqlPool> {
         let (_, values) = get_database_urls_from_env(env_vars);
 
-        futures::future::join_all(values.into_iter().map(|(code, url)| async move {
-            connect_mysql(&url, max_connections).await.map(|pool| (code, pool))
-        }))
-        .await
-        .into_iter()
-        .flatten()
-        .collect()
+        values
+            .into_iter()
+            .filter_map(|(code, url)| connect_mysql(&url, max_connections).map(|pool| (code, pool)))
+            .collect()
     }
 
     pub async fn init_mysql_pool_from_url(url: &str, max_connections: u32) -> Option<MySqlPool> {
-        connect_mysql(url, max_connections).await
+        connect_mysql(url, max_connections)
     }
 
     pub fn get_by_code(&self, code: &str) -> Option<MySqlPool> {
@@ -85,9 +82,12 @@ async fn connect_pg(url: &str, max_connections: u32) -> Option<PgPool> {
     }
 }
 
-async fn connect_mysql(url: &str, max_connections: u32) -> Option<MySqlPool> {
+/// Pool paresseux : aucune connexion n'est ouverte ici, elle l'est à la première requête.
+/// Une base injoignable au démarrage n'est donc pas perdue, la connexion est retentée
+/// à chaque requête. `None` seulement si l'url n'est pas une url MySQL valide.
+fn connect_mysql(url: &str, max_connections: u32) -> Option<MySqlPool> {
     if DatabaseType::from_str(url) == Ok(DatabaseType::MySql) {
-        MySqlPoolOptions::new().max_connections(max_connections).connect(url).await.ok()
+        MySqlPoolOptions::new().max_connections(max_connections).connect_lazy(url).ok()
     } else {
         None
     }
@@ -168,6 +168,13 @@ mod tests {
     #[tokio::test]
     async fn init_mysql_pool() {
         let pool = Databases::init_mysql_pool_from_url(&test_mysql_url(), 1).await;
+        assert!(pool.is_some());
+    }
+
+    #[tokio::test]
+    async fn init_mysql_pool_unreachable() {
+        // pool paresseux : créé même si le serveur est injoignable
+        let pool = Databases::init_mysql_pool_from_url("mysql://tempo:x@127.0.0.1:1/tw_gtra", 1).await;
         assert!(pool.is_some());
     }
 
